@@ -104,9 +104,8 @@ def create_mp4(obj, dsid, mp4id):
 
     infile = os.path.join(directory, file)
     mp4file = os.path.join(directory, 'output.mp4')
-    
+
     r = subprocess.call(['ffmpeg', '-i', infile, '-f', 'mp4', '-vcodec', 'libx264', '-preset', 'medium', '-acodec', 'libfaac', '-ab', '128k', '-ac', '2', '-async', '1', '-movflags', 'faststart', mp4file])
-    logger.info('bobbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
     if r == 0:
         update_datastream(obj, mp4id, mp4file, label='compressed mp4', mimeType='video/mp4')
     else:
@@ -220,6 +219,26 @@ def create_pdf(obj, dsid, pdfid):
     logger.debug(os.listdir(directory))
     rmtree(directory, ignore_errors=True)
     return value
+
+def mods_to_dc(obj, dsid, dsidOut='DC'):
+    logger = logging.getLogger('islandoraUtils.DSConverter.mods_to_dc')
+    directory, file = get_datastream_as_file(obj, dsid, 'MODS')
+    logger.debug('Got MODS datastream')
+    modsxml = etree.parse(os.path.join(directory, file))
+    logger.debug('Parsed MODS datastream')
+    transform = etree.XSLT(etree.parse(os.path.join(os.path.dirname(__file__), '__resources/mods2dc.xslt')))
+    logger.debug('Parsed XSLT')
+    transformed = transform(modsxml)
+    logger.debug('Transformed MODS to DC datastream')
+
+    with open(os.path.join(directory, dsidOut), 'w', 0) as temp:
+      transformed.write(temp)
+      logger.debug('Wrote transformed DS to disk')
+
+    r = update_datastream(obj, dsidOut, temp.name, label='DC Record', mimeType="text/xml")
+
+    rmtree(directory, ignore_errors=True)
+    return r
 
 def marcxml_to_mods(obj, dsid, dsidOut='MODS'):
     logger = logging.getLogger('islandoraUtils.DSConverter.marcxml_to_mods')
